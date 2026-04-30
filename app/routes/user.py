@@ -1,35 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 
-from database import SessionLocal, engine
-from models import Base, User
+from app.database import SessionLocal
+from app.models import User
+from app.schemas import UserCreate, UserResponse
 
-Base.metadata.create_all(bind=engine)
-
-app = FastAPI()
+router = APIRouter(prefix="/users", tags=["users"])
 
 
-# ========================
-# SCHEMAS
-# ========================
-class UserCreate(BaseModel):
-    name: str
-    age: int
-
-
-class UserResponse(BaseModel):
-    id: int
-    name: str
-    age: int
-
-    class Config:
-        from_attributes = True
-
-
-# ========================
-# DB SESSION
-# ========================
 def get_db():
     db = SessionLocal()
     try:
@@ -38,10 +16,7 @@ def get_db():
         db.close()
 
 
-# ========================
-# CREATE
-# ========================
-@app.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     new_user = User(name=user.name, age=user.age)
     db.add(new_user)
@@ -50,18 +25,12 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
-# ========================
-# READ
-# ========================
-@app.get("/users", response_model=list[UserResponse])
+@router.get("", response_model=list[UserResponse])
 def get_users(db: Session = Depends(get_db)):
     return db.query(User).all()
 
 
-# ========================
-# UPDATE
-# ========================
-@app.put("/users/{user_id}", response_model=UserResponse)
+@router.put("/{user_id}", response_model=UserResponse)
 def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
 
@@ -77,10 +46,7 @@ def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 
-# ========================
-# DELETE
-# ========================
-@app.delete("/users/{user_id}")
+@router.delete("/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
 
